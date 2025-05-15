@@ -72,8 +72,8 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
-  "engines": {  // <-- AÑADIR ESTO ES BUENA PRÁCTICA
-    "node": ">=18.0.0" // Especifica una versión LTS de Node
+  "engines": {  
+    "node": ">=18.0.0"
   },
   "jest": {
     "moduleFileExtensions": [
