@@ -1,0 +1,15 @@
+services:
+  postgres_db: # Nombre que le damos al servicio de la base de datos
+    image: postgres:15 # Usaremos la imagen oficial de PostgreSQL versión 15
+    container_name: formsync_db_container # Nombre del contenedor que se creará
+    environment:
+      POSTGRES_USER: formsync_user # Nombre de usuario para la BD
+      POSTGRES_PASSWORD: formsync_password # Contraseña para la BD (¡Cámbiala por algo seguro!)
+      POSTGRES_DB: formsync_db # Nombre de la base de datos que se creará
+    ports:
+      - "5432:5432" # Mapea el puerto 5432 de tu máquina al puerto 5432 del contenedor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Guarda los datos de la BD en un volumen para que persistan
+
+volumes: # Define el volumen para persistir datos
+  postgres_data:

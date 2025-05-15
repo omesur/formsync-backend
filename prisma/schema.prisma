@@ -1,0 +1,115 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Lee la URL del archivo .env
+}
+
+// Definir el Enum directamente en Prisma
+enum Role {
+  User
+  QuickFiller
+  SyncManager
+  QuickBuilder
+  DocBuilder
+  SyncMaster
+  Admin
+}
+
+enum FormStatus {
+    Draft     // Borrador, no enviado/finalizado
+    Submitted // Enviado para revisión/procesamiento
+    Approved   // Aprobado (si hay flujo de aprobación)
+    Rejected   // Rechazado (si hay flujo de aprobación)
+    Signed    // Firmado digitalmente (si aplica)
+    Archived  // Archivado/Histórico
+  }
+
+// Nuestro modelo de Usuario
+model User {
+  id        Int      @id @default(autoincrement()) // ID numérico autoincremental
+  email     String   @unique // Email único para cada usuario
+  password  String   // Contraseña hasheada
+  name      String?  // Nombre del usuario 
+  role      Role     @default(User)
+  hashedRefreshToken String? @unique 
+  createdAt DateTime @default(now()) // Fecha de creación
+  updatedAt DateTime @updatedAt // Fecha de última actualización
+  createdTemplates FormTemplate[]
+  filledInstances FormInstance[] 
+  uploadedFiles      UploadedFile[]
+}
+
+// Modelo para las Plantillas de Formato
+model FormTemplate {
+  id          Int      @id @default(autoincrement())
+  uniqueCode  String   @unique // Código único como 'CS-F-1'
+  name        String   // Nombre descriptivo, ej: "Formato de Registro de Clientes"
+  description String?  // Descripción opcional
+  structureDefinition Json? 
+  version     Int      @default(1) // Versión de la plantilla
+  isActive    Boolean  @default(true) // Si la plantilla está activa para uso
+  instances FormInstance[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById Int?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Añadir índice para la clave foránea
+   @@index([createdById])
+}
+
+// Modelo para una instancia de formulario diligenciado
+model FormInstance {
+  id            Int        @id @default(autoincrement())
+  data          Json       // Datos diligenciados por el usuario
+  status        FormStatus @default(Draft) // Estado actual de la instancia
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relación con la plantilla que define la estructura
+  templateId    Int
+  template      FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade) // Si se borra la plantilla, se borran sus instancias
+
+  // Relación con el usuario propietario/creador
+  ownerUserId   Int
+  ownerUser     User       @relation(fields: [ownerUserId], references: [id], onDelete: Cascade) // Si se borra el usuario, se borran sus instancias
+
+  uploadedFiles UploadedFile[] // <-- Relación a archivos de esta instancia
+
+  // Índices para búsquedas comunes
+  @@index([templateId])
+  @@index([ownerUserId])
+  @@index([status])
+}
+
+// --- Nuevo Modelo para Archivos ---
+model UploadedFile {
+  id           Int      @id @default(autoincrement())
+  filename     String   // Nombre original del archivo subido
+  storageKey   String   @unique // Clave única (ruta local relativa en este caso)
+  mimeType     String   // Tipo MIME (ej: 'image/jpeg', 'application/pdf')
+  size         Int      // Tamaño en bytes
+  createdAt    DateTime @default(now())
+
+  // Quién lo subió
+  ownerUserId  Int
+  ownerUser    User     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  // A qué instancia pertenece
+  formInstanceId Int
+  formInstance FormInstance @relation(fields: [formInstanceId], references: [id], onDelete: Cascade)
+
+  // A qué campo del formulario pertenece (nombre interno del campo)
+  fieldName    String
+
+  @@index([ownerUserId])
+  @@index([formInstanceId])
+  @@index([storageKey])
+}
